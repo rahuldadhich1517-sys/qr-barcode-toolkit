@@ -1,0 +1,79 @@
+{
+  "name": "@rahul_dadhich15/qr-barcode-toolkit",
+  "version": "0.1.0",
+  "description": "Production-ready QR & Barcode generation, decoding, and live scanning toolkit for TypeScript, Browser, and Node.js",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/browser/index.d.ts",
+      "import": "./dist/browser/index.mjs",
+      "require": "./dist/browser/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rahuldadhich1517-sys/qr-barcode-toolkit.git"
+  },
+  "keywords": [
+    "qr",
+    "barcode",
+    "qr-code",
+    "qr-scanner",
+    "qr-reader",
+    "barcode-scanner",
+    "barcode-generator",
+    "zxing",
+    "bwip-js",
+    "qrcode",
+    "camera-scanner",
+    "typescript"
+  ],
+  "author": "Rahul Dadhich <rahuldadhich1517@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/rahuldadhich1517-sys/qr-barcode-toolkit/issues"
+  },
+  "homepage": "https://github.com/rahuldadhich1517-sys/qr-barcode-toolkit#readme",
+  "dependencies": {
+    "@zxing/library": "^0.21.3",
+    "bwip-js": "^4.5.1",
+    "pngjs": "^7.0.0",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/bwip-js": "^3.2.3",
+    "@types/node": "^22.13.10",
+    "@types/pngjs": "^6.0.5",
+    "@types/qrcode": "^1.5.5",
+    "@vitest/coverage-v8": "^3.0.8",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.8"
+  }
+}
