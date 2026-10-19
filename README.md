@@ -13,29 +13,26 @@ A modern, production-ready TypeScript toolkit for QR code generation, still-imag
 
 - [1. Overview](#1-overview)
 - [2. Features](#2-features)
-- [3. Installation](#3-installation)
-- [4. Environment Compatibility](#4-environment-compatibility)
-- [5. Quick Start](#5-quick-start)
-- [6. QR Code Generation (`qr-generator`)](#6-qr-code-generation-qr-generator)
-- [7. QR Image Decoding (`qr-read`)](#7-qr-image-decoding-qr-read)
-- [8. Live QR Scanning (`qr-scanner`)](#8-live-qr-scanning-qr-scanner)
-- [9. Barcode Generation (`barcode-generator`)](#9-barcode-generation-barcode-generator)
-- [10. Barcode Scanning (`barcode-scanner`)](#10-barcode-scanning-barcode-scanner)
-- [11. Verified Supported Symbologies](#11-verified-supported-symbologies)
-- [12. Supported Output Formats](#12-supported-output-formats)
-- [13. Configuration Options](#13-configuration-options)
-- [14. Scanner Lifecycle and Cleanup](#14-scanner-lifecycle-and-cleanup)
-- [15. Camera Permissions & HTTPS Requirements](#15-camera-permissions--https-requirements)
-- [16. Security and Privacy](#16-security-and-privacy)
-- [17. Error Handling & Taxonomy](#17-error-handling--taxonomy)
-- [18. TypeScript Examples](#18-typescript-examples)
-- [19. API Reference](#19-api-reference)
-- [20. Supported Node & Browser APIs](#20-supported-node--browser-apis)
-- [21. Known Limitations](#21-known-limitations)
-- [22. Development and Testing](#22-development-and-testing)
-- [23. Building and Verifying](#23-building-and-verifying)
-- [24. Contributing](#24-contributing)
-- [25. License and Changelog](#25-license-and-changelog)
+- [3. Environment Compatibility](#3-environment-compatibility)
+- [4. Quick Start](#4-quick-start)
+- [5. QR Code Generation (`qr-generator`)](#5-qr-code-generation-qr-generator)
+- [6. QR Image Decoding (`qr-read`)](#6-qr-image-decoding-qr-read)
+- [7. Live QR Scanning (`qr-scanner`)](#7-live-qr-scanning-qr-scanner)
+- [8. Barcode Generation (`barcode-generator`)](#8-barcode-generation-barcode-generator)
+- [9. Barcode Scanning (`barcode-scanner`)](#9-barcode-scanning-barcode-scanner)
+- [10. Verified Supported Symbologies](#10-verified-supported-symbologies)
+- [11. Supported Output Formats](#11-supported-output-formats)
+- [12. Configuration Options](#12-configuration-options)
+- [13. Scanner Lifecycle and Cleanup](#13-scanner-lifecycle-and-cleanup)
+- [14. Camera Permissions & HTTPS Requirements](#14-camera-permissions--https-requirements)
+- [15. Security and Privacy](#15-security-and-privacy)
+- [16. Error Handling & Taxonomy](#16-error-handling--taxonomy)
+- [17. TypeScript Examples](#17-typescript-examples)
+- [18. API Reference](#18-api-reference)
+- [19. Supported Node & Browser APIs](#19-supported-node--browser-apis)
+- [20. Known Limitations](#20-known-limitations)
+- [21. Contributing](#21-contributing)
+- [22. License and Changelog](#22-license-and-changelog)
 
 ---
 
@@ -56,23 +53,7 @@ A modern, production-ready TypeScript toolkit for QR code generation, still-imag
 
 ---
 
-## 3. Installation
-
-```bash
-npm install @rahul_dadhich15/qr-barcode-toolkit
-```
-
-Or using pnpm / yarn:
-
-```bash
-pnpm add @rahul_dadhich15/qr-barcode-toolkit
-# or
-yarn add @rahul_dadhich15/qr-barcode-toolkit
-```
-
----
-
-## 4. Environment Compatibility
+## 3. Environment Compatibility
 
 | Environment | Generation (SVG/PNG) | Image Decoding | Camera Live Scanning |
 | :--- | :---: | :---: | :---: |
@@ -82,7 +63,7 @@ yarn add @rahul_dadhich15/qr-barcode-toolkit
 
 ---
 
-## 5. Quick Start
+## 4. Quick Start
 
 ### Universal / Node.js Quick Start
 
@@ -124,7 +105,7 @@ await scanner.start();
 
 ---
 
-## 6. QR Code Generation (`qr-generator`)
+## 5. QR Code Generation (`qr-generator`)
 
 Function signature:
 ```ts
@@ -156,7 +137,7 @@ const pngBytes = await generateQrCode('Secure Token', {
 
 ---
 
-## 7. QR Image Decoding (`qr-read`)
+## 6. QR Image Decoding (`qr-read`)
 
 Function signature:
 ```ts
@@ -184,7 +165,7 @@ if (result) {
 
 ---
 
-## 8. Live QR Scanning (`qr-scanner`)
+## 7. Live QR Scanning (`qr-scanner`)
 
 Function signature:
 ```ts
@@ -214,7 +195,7 @@ scanner.destroy();
 
 ---
 
-## 9. Barcode Generation (`barcode-generator`)
+## 8. Barcode Generation (`barcode-generator`)
 
 Function signature:
 ```ts
@@ -241,7 +222,7 @@ const dmPng = await generateBarcode('MATRIX-SERIAL-10029', {
 
 ---
 
-## 10. Barcode Scanning (`barcode-scanner`)
+## 9. Barcode Scanning (`barcode-scanner`)
 
 Public functions:
 ```ts
@@ -269,7 +250,7 @@ await scanner.start();
 
 ---
 
-## 11. Verified Supported Symbologies
+## 10. Verified Supported Symbologies
 
 Every supported format has undergone end-to-end round-trip generation and decoding tests:
 
@@ -291,7 +272,7 @@ Every supported format has undergone end-to-end round-trip generation and decodi
 
 ---
 
-## 12. Supported Output Formats
+## 11. Supported Output Formats
 
 - **`svg`**: Vector output, sharp at any scale. Fully sanitized against SVG markup injection.
 - **`png`**: Binary bytes (`Uint8Array`) containing lossless PNG image data.
@@ -299,7 +280,7 @@ Every supported format has undergone end-to-end round-trip generation and decodi
 
 ---
 
-## 13. Configuration Options
+## 12. Configuration Options
 
 ### `QrGeneratorOptions`
 - `errorCorrectionLevel?: 'L' | 'M' | 'Q' | 'H'` (Default: `'M'`)
@@ -330,7 +311,7 @@ Every supported format has undergone end-to-end round-trip generation and decodi
 
 ---
 
-## 14. Scanner Lifecycle and Cleanup
+## 13. Scanner Lifecycle and Cleanup
 
 The scanner controller follows an explicit finite state machine:
 
@@ -357,7 +338,7 @@ The scanner controller follows an explicit finite state machine:
 
 ---
 
-## 15. Camera Permissions & HTTPS Requirements
+## 14. Camera Permissions & HTTPS Requirements
 
 - **Browser Security Context**: Browser camera access via `navigator.mediaDevices.getUserMedia` requires a Secure Context (`https://` or `localhost`).
 - **User Permission**: Never requested upon library import. Permission prompt is triggered exclusively when `scanner.start()` is invoked.
@@ -365,7 +346,7 @@ The scanner controller follows an explicit finite state machine:
 
 ---
 
-## 16. Security and Privacy
+## 15. Security and Privacy
 
 1. **Local Processing Only**: All generation and decoding occurs entirely in-memory on the client or server. No frames or strings are ever sent over network connections.
 2. **Untrusted Data Policy**: Decoded barcode content is strictly treated as untrusted text. The library never executes `eval()`, never performs automatic navigation, and never performs background HTTP requests on parsed URLs.
@@ -375,7 +356,7 @@ The scanner controller follows an explicit finite state machine:
 
 ---
 
-## 17. Error Handling & Taxonomy
+## 16. Error Handling & Taxonomy
 
 All package errors derive from `ToolkitError`:
 
@@ -417,7 +398,7 @@ try {
 
 ---
 
-## 18. TypeScript Examples
+## 17. TypeScript Examples
 
 ### Strict Type Inference with Output Overloads
 ```ts
@@ -433,7 +414,7 @@ const dataUrl = await generateQrCode('Test', { output: 'data-url' });
 
 ---
 
-## 19. API Reference
+## 18. API Reference
 
 ### Core Exports
 - `generateQrCode(text, options?)`
@@ -450,61 +431,28 @@ const dataUrl = await generateQrCode('Test', { output: 'data-url' });
 
 ---
 
-## 20. Supported Node & Browser APIs
+## 19. Supported Node & Browser APIs
 
 - **Node.js**: `Buffer`, `Uint8Array`, `ArrayBuffer`, synchronous PNG extraction via `pngjs`.
 - **Browser**: `HTMLCanvasElement`, `OffscreenCanvas`, `ImageData`, `ImageBitmap`, `HTMLImageElement`, `HTMLVideoElement`, `Blob`, `File`, `navigator.mediaDevices.getUserMedia`.
 
 ---
 
-## 21. Known Limitations
+## 20. Known Limitations
 
 1. **UPC-E Decoding**: UPC-E generation is supported via `generateBarcode()`. However, UPC-E decoding is currently unavailable due to an upstream issue in `@zxing/library`'s `UPCEReader` implementation. Other formats (`UPC_A`, `EAN_13`, `EAN_8`, `CODE_128`, etc.) are fully verified for round-trip decoding.
 2. **Camera Hardware in CI / Headless**: Camera scanning requires physical hardware or synthetic browser media streams. Automated unit tests mock media stream tracks for predictable CI execution.
 
 ---
 
-## 22. Development and Testing
-
-```bash
-# Clone the repository
-git clone https://github.com/rahuldadhich1517-sys/qr-barcode-toolkit.git
-
-# Install dependencies
-npm install
-
-# Run TypeScript typecheck
-npm run typecheck
-
-# Run test suite
-npm run test:run
-
-# Run test coverage
-npm run test:coverage
-```
-
----
-
-## 23. Building and Verifying
-
-```bash
-# Build CommonJS, ESM, and TypeScript declarations
-npm run build
-
-# Verify packaging contents
-npm pack --dry-run
-```
-
----
-
-## 24. Contributing
+## 21. Contributing
 
 Contributions are welcome! Please open an issue or pull request on GitHub:
 https://github.com/rahuldadhich1517-sys/qr-barcode-toolkit
 
 ---
 
-## 25. License and Changelog
+## 22. License and Changelog
 
 - **License**: [MIT](LICENSE) © 2026 Rahul Dadhich
 - **Changelog**: See [CHANGELOG.md](CHANGELOG.md) for version release notes.

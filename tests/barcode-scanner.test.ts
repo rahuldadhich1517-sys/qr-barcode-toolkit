@@ -9,7 +9,9 @@ import {
   InvalidOptionsError,
   PermissionDeniedError,
   readBarcode,
-  ScannerDestroyedError
+  ScannerDestroyedError,
+  TimeoutError,
+  UnsupportedFormatError
 } from '../src/index.js';
 
 describe('Barcode Scanner & Reader (readBarcode, createBarcodeScanner)', () => {
@@ -48,6 +50,108 @@ describe('Barcode Scanner & Reader (readBarcode, createBarcodeScanner)', () => {
       expect(result?.rawBytes).toBeDefined();
     });
 
+    it('decodes various 1D and 2D barcode formats accurately', async () => {
+      // EAN-13
+      const ean13Png = await generateBarcode('9780201379624', {
+        format: 'EAN_13',
+        output: 'png',
+        scale: 3,
+        margin: 15
+      });
+      const ean13Res = await readBarcode(ean13Png, { formats: ['EAN_13'] });
+      expect(ean13Res).not.toBeNull();
+      expect(ean13Res?.text).toBe('9780201379624');
+      expect(ean13Res?.format).toBe('EAN_13');
+
+      // EAN-8
+      const ean8Png = await generateBarcode('90311017', {
+        format: 'EAN_8',
+        output: 'png',
+        scale: 3,
+        margin: 15
+      });
+      const ean8Res = await readBarcode(ean8Png, { formats: ['EAN_8'] });
+      expect(ean8Res).not.toBeNull();
+      expect(ean8Res?.text).toBe('90311017');
+      expect(ean8Res?.format).toBe('EAN_8');
+
+      // UPC-A
+      const upcaPng = await generateBarcode('012345678905', {
+        format: 'UPC_A',
+        output: 'png',
+        scale: 3,
+        margin: 15
+      });
+      const upcaRes = await readBarcode(upcaPng, { formats: ['UPC_A'] });
+      expect(upcaRes).not.toBeNull();
+      expect(upcaRes?.text).toBe('012345678905');
+      expect(upcaRes?.format).toBe('UPC_A');
+
+      // Code 39
+      const code39Png = await generateBarcode('CODE39TEST', {
+        format: 'CODE_39',
+        output: 'png',
+        scale: 3,
+        margin: 15
+      });
+      const code39Res = await readBarcode(code39Png, { formats: ['CODE_39'] });
+      expect(code39Res).not.toBeNull();
+      expect(code39Res?.text).toBe('CODE39TEST');
+      expect(code39Res?.format).toBe('CODE_39');
+
+      // QR Code
+      const qrPng = await generateBarcode('https://toolkit.dev', {
+        format: 'QR_CODE',
+        output: 'png',
+        scale: 3,
+        margin: 15
+      });
+      const qrRes = await readBarcode(qrPng, { formats: ['QR_CODE'] });
+      expect(qrRes).not.toBeNull();
+      expect(qrRes?.text).toBe('https://toolkit.dev');
+      expect(qrRes?.format).toBe('QR_CODE');
+    });
+
+    it('enforces format filtering correctly', async () => {
+      const code128Png = await generateBarcode('FILTER128', {
+        format: 'CODE_128',
+        output: 'png',
+        scale: 3,
+        margin: 15
+      });
+
+      // Filter includes CODE_128 -> decodes
+      const matched = await readBarcode(code128Png, { formats: ['CODE_128'] });
+      expect(matched?.text).toBe('FILTER128');
+
+      // Filter excludes CODE_128 (only EAN_13) -> returns null
+      const excluded = await readBarcode(code128Png, { formats: ['EAN_13'] });
+      expect(excluded).toBeNull();
+
+      // Empty format list -> returns null immediately
+      const emptyFormats = await readBarcode(code128Png, { formats: [] });
+      expect(emptyFormats).toBeNull();
+
+      // Invalid format in array throws UnsupportedFormatError
+      await expect(
+        // @ts-expect-error invalid format test
+        readBarcode(code128Png, { formats: ['NOT_A_FORMAT'] })
+      ).rejects.toThrow(UnsupportedFormatError);
+    });
+
+    it('documents and handles UPC-E decoding limitation gracefully without crashing', async () => {
+      const upcePng = await generateBarcode('01234565', {
+        format: 'UPC_E',
+        output: 'png',
+        scale: 3,
+        margin: 15
+      });
+
+      // Due to upstream ZXing UPCEReader rowOffset bug, decode returns null safely
+      const result = await readBarcode(upcePng, { formats: ['UPC_E'] });
+      expect(result).toBeNull();
+    });
+
     it('returns null when image contains no barcode', async () => {
       const png = new PNG({ width: 100, height: 100 });
       for (let i = 0; i < png.data.length; i += 4) {
@@ -68,6 +172,46 @@ describe('Barcode Scanner & Reader (readBarcode, createBarcodeScanner)', () => {
 
     it('rejects empty input buffer with InvalidInputError', async () => {
       await expect(readBarcode(new Uint8Array(0))).rejects.toThrow(InvalidInputError);
+    });
+
+    it('validates timeoutMs and signal options in readBarcode', async () => {
+      const pngBytes = await generateBarcode('CODE128', { format: 'CODE_128', output: 'png' });
+
+      // Non-object options
+      // @ts-expect-error non-object options
+      await expect(readBarcode(pngBytes, 123)).rejects.toThrow(InvalidOptionsError);
+
+      // Non-positive timeout
+      await expect(readBarcode(pngBytes, { timeoutMs: 0 })).rejects.toThrow(InvalidOptionsError);
+      await expect(readBarcode(pngBytes, { timeoutMs: -10 })).rejects.toThrow(InvalidOptionsError);
+      // @ts-expect-error invalid timeout type
+      await expect(readBarcode(pngBytes, { timeoutMs: '100' })).rejects.toThrow(InvalidOptionsError);
+
+      // Already aborted signal
+      const controller = new AbortController();
+      controller.abort();
+      await expect(readBarcode(pngBytes, { signal: controller.signal })).rejects.toThrow(TimeoutError);
+
+      // Timeout expiration on slow async input
+      const slowBlob = new Blob([new Uint8Array([1, 2, 3])]);
+      vi.spyOn(slowBlob, 'arrayBuffer').mockImplementation(
+        () => new Promise<ArrayBuffer>((resolve) => setTimeout(() => resolve(new ArrayBuffer(10)), 150))
+      );
+      await expect(readBarcode(slowBlob, { timeoutMs: 25 })).rejects.toThrow(TimeoutError);
+
+      // Mid-flight abort on slow async input
+      const abortCtrl = new AbortController();
+      const abortBlob = new Blob([new Uint8Array([1, 2, 3])]);
+      vi.spyOn(abortBlob, 'arrayBuffer').mockImplementation(
+        () =>
+          new Promise<ArrayBuffer>((resolve) => {
+            setTimeout(() => {
+              abortCtrl.abort();
+              resolve(new ArrayBuffer(10));
+            }, 20);
+          })
+      );
+      await expect(readBarcode(abortBlob, { signal: abortCtrl.signal })).rejects.toThrow(TimeoutError);
     });
   });
 
@@ -287,6 +431,165 @@ describe('Barcode Scanner & Reader (readBarcode, createBarcodeScanner)', () => {
       await scanner.stop();
       scanner.destroy();
     });
+
+    it('rejects invalid barcode format in scanner options with UnsupportedFormatError', () => {
+      expect(() =>
+        createBarcodeScanner({
+          // @ts-expect-error invalid format test
+          formats: ['INVALID_FORMAT'],
+          onScan: () => {}
+        })
+      ).toThrow(UnsupportedFormatError);
+    });
+
+    it('applies camera deviceId and facingMode constraints properly', async () => {
+      const getUserMediaMock = vi.fn().mockResolvedValue({
+        getTracks: vi.fn().mockReturnValue([]),
+        getVideoTracks: vi.fn().mockReturnValue([])
+      });
+
+      Object.defineProperty(globalThis, 'navigator', {
+        value: {
+          mediaDevices: {
+            getUserMedia: getUserMediaMock
+          }
+        },
+        configurable: true,
+        writable: true
+      });
+
+      const mockVideo = {
+        readyState: 4,
+        play: vi.fn().mockResolvedValue(undefined),
+        pause: vi.fn()
+      };
+
+      const scanner = createBarcodeScanner({
+        video: mockVideo as unknown as HTMLVideoElement,
+        camera: { deviceId: 'barcode-cam-456' },
+        onScan: () => {}
+      });
+      await scanner.start();
+      expect(getUserMediaMock).toHaveBeenCalledWith({
+        video: { deviceId: { exact: 'barcode-cam-456' } },
+        audio: false
+      });
+      await scanner.stop();
+      scanner.destroy();
+    });
+
+    it('supports duplicateDelayMs throttling for barcode scanner', async () => {
+      const { generateBarcode } = await import('../src/index.js');
+      const { PNG } = await import('pngjs');
+
+      const barcodePng = await generateBarcode('DUP128', {
+        format: 'CODE_128',
+        output: 'png',
+        scale: 2,
+        margin: 5
+      });
+      const parsed = PNG.sync.read(Buffer.from(barcodePng));
+
+      const mockStream = {
+        getTracks: vi.fn().mockReturnValue([{ stop: vi.fn(), onended: null }]),
+        getVideoTracks: vi.fn().mockReturnValue([{ stop: vi.fn(), onended: null }])
+      };
+
+      const mockVideo = {
+        readyState: 4,
+        videoWidth: parsed.width,
+        videoHeight: parsed.height,
+        play: vi.fn().mockResolvedValue(undefined),
+        pause: vi.fn()
+      };
+
+      Object.defineProperty(globalThis, 'navigator', {
+        value: {
+          mediaDevices: {
+            getUserMedia: vi.fn().mockResolvedValue(mockStream)
+          }
+        },
+        configurable: true,
+        writable: true
+      });
+
+      (globalThis as Record<string, unknown>)['OffscreenCanvas'] = class FakeCanvas {
+        width = parsed.width;
+        height = parsed.height;
+        getContext() {
+          return {
+            drawImage: vi.fn(),
+            getImageData: () => ({
+              data: parsed.data,
+              width: parsed.width,
+              height: parsed.height
+            })
+          };
+        }
+      };
+
+      const onScan = vi.fn();
+      const scanner = createBarcodeScanner({
+        video: mockVideo as unknown as HTMLVideoElement,
+        scanIntervalMs: 15,
+        duplicateDelayMs: 250,
+        onScan
+      });
+
+      await scanner.start();
+
+      await new Promise(resolve => setTimeout(resolve, 40));
+      const initialCalls = onScan.mock.calls.length;
+      expect(initialCalls).toBeGreaterThanOrEqual(1);
+
+      await new Promise(resolve => setTimeout(resolve, 40));
+      expect(onScan.mock.calls.length).toBe(initialCalls);
+
+      await new Promise(resolve => setTimeout(resolve, 250));
+      expect(onScan.mock.calls.length).toBeGreaterThan(initialCalls);
+
+      await scanner.stop();
+      scanner.destroy();
+    });
+
+    it('verifies stop and destroy idempotency', async () => {
+      const mockTrack = { stop: vi.fn(), onended: null };
+      const mockStream = {
+        getTracks: vi.fn().mockReturnValue([mockTrack]),
+        getVideoTracks: vi.fn().mockReturnValue([mockTrack])
+      };
+
+      Object.defineProperty(globalThis, 'navigator', {
+        value: {
+          mediaDevices: {
+            getUserMedia: vi.fn().mockResolvedValue(mockStream)
+          }
+        },
+        configurable: true,
+        writable: true
+      });
+
+      const mockVideo = {
+        readyState: 4,
+        play: vi.fn().mockResolvedValue(undefined),
+        pause: vi.fn()
+      };
+
+      const scanner = createBarcodeScanner({
+        video: mockVideo as unknown as HTMLVideoElement,
+        onScan: () => {}
+      });
+
+      await scanner.start();
+      await scanner.stop();
+      await scanner.stop(); // Safe second call
+      expect(scanner.getState()).toBe('stopped');
+
+      scanner.destroy();
+      scanner.destroy(); // Safe second call
+      expect(scanner.getState()).toBe('destroyed');
+    });
   });
 });
+
 

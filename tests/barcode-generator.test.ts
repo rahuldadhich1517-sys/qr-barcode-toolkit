@@ -192,5 +192,165 @@ describe('Barcode Generator (generateBarcode)', () => {
       });
       expect(svg).toContain('<svg');
     });
+
+    it('supports 3-char hex colors and named CSS colors', async () => {
+      const svgHex = await generateBarcode('123456', {
+        format: 'CODE_128',
+        foregroundColor: '#f00',
+        backgroundColor: '#fff'
+      });
+      expect(svgHex).toContain('<svg');
+
+      const svgNamed = await generateBarcode('123456', {
+        format: 'CODE_128',
+        foregroundColor: 'red',
+        backgroundColor: 'white'
+      });
+      expect(svgNamed).toContain('<svg');
+
+      // PNG with named colors
+      const pngNamed = await generateBarcode('123456', {
+        format: 'CODE_128',
+        foregroundColor: 'blue',
+        backgroundColor: 'yellow',
+        output: 'png'
+      });
+      expect(pngNamed).toBeInstanceOf(Uint8Array);
+    });
+
+    it('rejects invalid color strings with InvalidOptionsError', async () => {
+      await expect(
+        generateBarcode('123456', { format: 'CODE_128', foregroundColor: '#zzz' })
+      ).rejects.toThrow(InvalidOptionsError);
+
+      await expect(
+        generateBarcode('123456', { format: 'CODE_128', backgroundColor: 'not-a-color' })
+      ).rejects.toThrow(InvalidOptionsError);
+
+      await expect(
+        generateBarcode('123456', { format: 'CODE_128', foregroundColor: '' })
+      ).rejects.toThrow(InvalidOptionsError);
+
+      // @ts-expect-error non-string color
+      await expect(
+        generateBarcode('123456', { format: 'CODE_128', foregroundColor: 12345 })
+      ).rejects.toThrow(InvalidOptionsError);
+    });
+
+    it('validates dimension boundaries (height, scale, margin, width)', async () => {
+      // Valid boundary values
+      const validSvg = await generateBarcode('123456', {
+        format: 'CODE_128',
+        height: 1,
+        scale: 1,
+        margin: 0,
+        width: 10
+      });
+      expect(validSvg).toContain('<svg');
+
+      const validMax = await generateBarcode('123456', {
+        format: 'CODE_128',
+        height: 10000,
+        scale: 20,
+        margin: 200
+      });
+      expect(validMax).toContain('<svg');
+
+      // Invalid height
+      await expect(
+        generateBarcode('123456', { format: 'CODE_128', height: 0 })
+      ).rejects.toThrow(InvalidOptionsError);
+      await expect(
+        generateBarcode('123456', { format: 'CODE_128', height: 10001 })
+      ).rejects.toThrow(InvalidOptionsError);
+      await expect(
+        generateBarcode('123456', { format: 'CODE_128', height: -5 })
+      ).rejects.toThrow(InvalidOptionsError);
+      await expect(
+        generateBarcode('123456', { format: 'CODE_128', height: 2.5 })
+      ).rejects.toThrow(InvalidOptionsError);
+
+      // Invalid scale
+      await expect(
+        generateBarcode('123456', { format: 'CODE_128', scale: 0 })
+      ).rejects.toThrow(InvalidOptionsError);
+      await expect(
+        generateBarcode('123456', { format: 'CODE_128', scale: 21 })
+      ).rejects.toThrow(InvalidOptionsError);
+      await expect(
+        generateBarcode('123456', { format: 'CODE_128', scale: 1.5 })
+      ).rejects.toThrow(InvalidOptionsError);
+
+      // Invalid margin
+      await expect(
+        generateBarcode('123456', { format: 'CODE_128', margin: -1 })
+      ).rejects.toThrow(InvalidOptionsError);
+      await expect(
+        generateBarcode('123456', { format: 'CODE_128', margin: 201 })
+      ).rejects.toThrow(InvalidOptionsError);
+      await expect(
+        generateBarcode('123456', { format: 'CODE_128', margin: 5.5 })
+      ).rejects.toThrow(InvalidOptionsError);
+
+      // Invalid width
+      await expect(
+        generateBarcode('123456', { format: 'CODE_128', width: 0 })
+      ).rejects.toThrow(InvalidOptionsError);
+      await expect(
+        generateBarcode('123456', { format: 'CODE_128', width: 10001 })
+      ).rejects.toThrow(InvalidOptionsError);
+    });
+
+    it('rejects unsupported output format strings', async () => {
+      // @ts-expect-error invalid output format
+      await expect(
+        generateBarcode('123456', { format: 'CODE_128', output: 'gif' })
+      ).rejects.toThrow(InvalidOptionsError);
+    });
+
+    it('rejects non-string payload data with InvalidInputError', async () => {
+      // @ts-expect-error non-string data
+      await expect(generateBarcode(123456, { format: 'CODE_128' })).rejects.toThrow(InvalidInputError);
+      // @ts-expect-error null data
+      await expect(generateBarcode(null, { format: 'CODE_128' })).rejects.toThrow(InvalidInputError);
+      // @ts-expect-error object data
+      await expect(generateBarcode({ code: '123' }, { format: 'CODE_128' })).rejects.toThrow(
+        InvalidInputError
+      );
+    });
+
+    it('rejects payload exceeding maximum length limit', async () => {
+      const excessive = 'A'.repeat(7090);
+      await expect(generateBarcode(excessive, { format: 'CODE_128' })).rejects.toThrow(InvalidInputError);
+    });
+
+    it('validates UPC-E length and character rules', async () => {
+      // 7 or 8 digits valid
+      const upc7 = await generateBarcode('0123456', { format: 'UPC_E' });
+      expect(upc7).toContain('<svg');
+      const upc8 = await generateBarcode('01234565', { format: 'UPC_E' });
+      expect(upc8).toContain('<svg');
+
+      // Disallowed lengths: 6 or 9
+      await expect(generateBarcode('012345', { format: 'UPC_E' })).rejects.toThrow(InvalidInputError);
+      await expect(generateBarcode('123456789', { format: 'UPC_E' })).rejects.toThrow(InvalidInputError);
+
+      // Non-numeric
+      await expect(generateBarcode('012345A', { format: 'UPC_E' })).rejects.toThrow(InvalidInputError);
+    });
+
+    it('validates 2D barcode generation: DataMatrix, Aztec, PDF417', async () => {
+      const dm = await generateBarcode('DataMatrix-12345-Test', { format: 'DATA_MATRIX', output: 'png' });
+      expect(dm).toBeInstanceOf(Uint8Array);
+
+      const aztec = await generateBarcode('Aztec-999-Test', { format: 'AZTEC', output: 'png' });
+      expect(aztec).toBeInstanceOf(Uint8Array);
+
+      const pdf = await generateBarcode('PDF417-MultiLine-Payload\nSecondLine', {
+        format: 'PDF_417',
+        output: 'png'
+      });
+      expect(pdf).toBeInstanceOf(Uint8Array);
+    });
   });
 });

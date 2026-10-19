@@ -166,7 +166,7 @@ export class ScannerController implements BaseScanner {
       this.videoElement = this.options.video;
       this.isInternallyCreatedVideo = false;
     } else {
-      if (typeof document !== 'undefined') {
+      if (!this.videoElement && typeof document !== 'undefined') {
         this.videoElement = document.createElement('video');
         this.isInternallyCreatedVideo = true;
       }

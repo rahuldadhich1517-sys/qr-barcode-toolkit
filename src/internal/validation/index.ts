@@ -48,6 +48,9 @@ export const DECODABLE_BARCODE_FORMATS: readonly BarcodeFormat[] = Object.freeze
 ]);
 
 export function calculateEanUpcChecksum(digits: string): number {
+  if (typeof digits !== 'string' || !/^\d+$/.test(digits)) {
+    throw new InvalidInputError(`Cannot calculate checksum for non-numeric digits: "${String(digits)}"`);
+  }
   const len = digits.length;
   let sum = 0;
   for (let i = 0; i < len; i++) {
@@ -67,6 +70,26 @@ export function validateBarcodeFormat(format: unknown): asserts format is Barcod
   }
 }
 
+const STANDARD_NAMED_COLORS: Readonly<Record<string, string>> = Object.freeze({
+  black: '#000000',
+  white: '#ffffff',
+  red: '#ff0000',
+  green: '#008000',
+  blue: '#0000ff',
+  yellow: '#ffff00',
+  cyan: '#00ffff',
+  magenta: '#ff00ff',
+  gray: '#808080',
+  grey: '#808080',
+  silver: '#c0c0c0',
+  maroon: '#800000',
+  olive: '#808000',
+  purple: '#800080',
+  teal: '#008080',
+  navy: '#000080',
+  orange: '#ffa500'
+});
+
 export function validateColor(color: unknown, fieldName: string): string {
   if (color === undefined || color === null) {
     return fieldName === 'foregroundColor' ? '#000000' : '#ffffff';
@@ -78,13 +101,25 @@ export function validateColor(color: unknown, fieldName: string): string {
   if (trimmed.length === 0) {
     throw new InvalidOptionsError(`${fieldName} cannot be empty`);
   }
-  // Safe color validation to prevent SVG injection or invalid CSS
-  // Allows hex (#fff, #123456, #12345678), rgb/rgba, hsl/hsla, and common web color names
-  const hexPattern = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
-  const funcPattern = /^(rgb|rgba|hsl|hsla)\(\s*[\d.%\s,/-]+\s*\)$/i;
-  const namedPattern = /^[a-zA-Z]+$/;
 
-  if (!hexPattern.test(trimmed) && !funcPattern.test(trimmed) && !namedPattern.test(trimmed)) {
+  const lower = trimmed.toLowerCase();
+  if (STANDARD_NAMED_COLORS[lower]) {
+    return STANDARD_NAMED_COLORS[lower]!;
+  }
+
+  // Parse rgb(r, g, b) or rgba(r, g, b, a) into hex
+  const rgbMatch = trimmed.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+  if (rgbMatch) {
+    const r = Math.min(255, Math.max(0, parseInt(rgbMatch[1]!, 10))).toString(16).padStart(2, '0');
+    const g = Math.min(255, Math.max(0, parseInt(rgbMatch[2]!, 10))).toString(16).padStart(2, '0');
+    const b = Math.min(255, Math.max(0, parseInt(rgbMatch[3]!, 10))).toString(16).padStart(2, '0');
+    return `#${r}${g}${b}`;
+  }
+
+  const hexPattern = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+  const funcPattern = /^(hsl|hsla)\(\s*[\d.%\s,/-]+\s*\)$/i;
+
+  if (!hexPattern.test(trimmed) && !funcPattern.test(trimmed)) {
     throw new InvalidOptionsError(`${fieldName} contains invalid or unsafe characters: "${trimmed}"`);
   }
   return trimmed;
@@ -157,8 +192,8 @@ export function validateBarcodeData(format: BarcodeFormat, data: unknown): strin
       break;
     }
     case 'UPC_E': {
-      if (!/^\d{6,8}$/.test(data)) {
-        throw new InvalidInputError(`UPC-E data must be 6, 7, or 8 digits, got "${data}"`);
+      if (!/^\d{7,8}$/.test(data)) {
+        throw new InvalidInputError(`UPC-E data must be 7 or 8 digits, got "${data}"`);
       }
       break;
     }

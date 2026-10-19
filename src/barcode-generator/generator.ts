@@ -28,12 +28,41 @@ const BARCODE_BCID_MAP: Record<BarcodeFormat, string> = {
 
 const VALID_OUTPUT_FORMATS: ReadonlySet<string> = new Set(['svg', 'png']);
 
+const NAMED_COLORS_TO_HEX: Readonly<Record<string, string>> = Object.freeze({
+  black: '000000',
+  white: 'ffffff',
+  red: 'ff0000',
+  green: '008000',
+  blue: '0000ff',
+  yellow: 'ffff00',
+  cyan: '00ffff',
+  magenta: 'ff00ff',
+  gray: '808080',
+  grey: '808080',
+  silver: 'c0c0c0',
+  maroon: '800000',
+  olive: '808000',
+  purple: '800080',
+  teal: '008080',
+  navy: '000080',
+  orange: 'ffa500'
+});
+
 function formatColorForBwip(colorStr: string): string {
-  if (colorStr.startsWith('#')) {
-    return colorStr.slice(1);
+  const normalized = colorStr.toLowerCase().trim();
+  if (NAMED_COLORS_TO_HEX[normalized]) {
+    return NAMED_COLORS_TO_HEX[normalized]!;
   }
-  return colorStr;
+  let hex = normalized;
+  if (hex.startsWith('#')) {
+    hex = hex.slice(1);
+  }
+  if (hex.length === 3 && /^[0-9a-f]{3}$/.test(hex)) {
+    return `${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}`;
+  }
+  return hex;
 }
+
 
 export function generateBarcode(
   data: string,

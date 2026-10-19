@@ -141,6 +141,11 @@ export async function decodeShared(
 
       const binaryBitmap = createBinaryBitmap(raw);
 
+      // If caller specified an empty formats list, no format matches
+      if (options.formats && options.formats.length === 0) {
+        return resolve(null);
+      }
+
       // Dedicated fast path for QR_CODE only
       if (options.formats && options.formats.length === 1 && options.formats[0] === 'QR_CODE') {
         const qrReader = new QRCodeReader();
@@ -176,7 +181,11 @@ export async function decodeShared(
 
       try {
         const res = multiReader.decode(binaryBitmap, hints);
-        return resolve(extractResult(res));
+        const extracted = extractResult(res);
+        if (options.formats && options.formats.length > 0 && !options.formats.includes(extracted.format)) {
+          return resolve(null);
+        }
+        return resolve(extracted);
       } catch (err) {
         if (
           err instanceof NotFoundException ||

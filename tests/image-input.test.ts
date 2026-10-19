@@ -115,6 +115,125 @@ describe('Image Input Parser (src/internal/image-input/index.ts)', () => {
     expect(result.data.length).toBe(256);
   });
 
+  it('parses an HTMLImageElement mock', async () => {
+    class FakeHTMLImageElement {
+      naturalWidth = 16;
+      naturalHeight = 16;
+      width = 16;
+      height = 16;
+    }
+
+    class FakeOffscreenCanvas {
+      width: number;
+      height: number;
+      constructor(w: number, h: number) {
+        this.width = w;
+        this.height = h;
+      }
+      getContext() {
+        return {
+          drawImage: vi.fn(),
+          getImageData: (sx: number, sy: number, sw: number, sh: number) => ({
+            data: new Uint8ClampedArray(sw * sh * 4),
+            width: sw,
+            height: sh
+          })
+        };
+      }
+    }
+
+    (globalThis as Record<string, unknown>)['HTMLImageElement'] = FakeHTMLImageElement;
+    (globalThis as Record<string, unknown>)['OffscreenCanvas'] = FakeOffscreenCanvas;
+    // @ts-expect-error mock window
+    globalThis.window = {};
+
+    const fakeImg = new FakeHTMLImageElement();
+    const result = await parseImageInput(fakeImg);
+    expect(result.width).toBe(16);
+    expect(result.height).toBe(16);
+    expect(result.data.length).toBe(16 * 16 * 4);
+  });
+
+  it('parses an HTMLVideoElement mock', async () => {
+    class FakeHTMLVideoElement {
+      videoWidth = 24;
+      videoHeight = 20;
+      width = 24;
+      height = 20;
+    }
+
+    class FakeOffscreenCanvas {
+      width: number;
+      height: number;
+      constructor(w: number, h: number) {
+        this.width = w;
+        this.height = h;
+      }
+      getContext() {
+        return {
+          drawImage: vi.fn(),
+          getImageData: (sx: number, sy: number, sw: number, sh: number) => ({
+            data: new Uint8ClampedArray(sw * sh * 4),
+            width: sw,
+            height: sh
+          })
+        };
+      }
+    }
+
+    (globalThis as Record<string, unknown>)['HTMLVideoElement'] = FakeHTMLVideoElement;
+    (globalThis as Record<string, unknown>)['OffscreenCanvas'] = FakeOffscreenCanvas;
+    // @ts-expect-error mock window
+    globalThis.window = {};
+
+    const fakeVideo = new FakeHTMLVideoElement();
+    const result = await parseImageInput(fakeVideo);
+    expect(result.width).toBe(24);
+    expect(result.height).toBe(20);
+    expect(result.data.length).toBe(24 * 20 * 4);
+  });
+
+  it('throws when canvas 2D context cannot be obtained', async () => {
+    class BadCanvas {
+      width = 10;
+      height = 10;
+      getContext() {
+        return null;
+      }
+    }
+
+    (globalThis as Record<string, unknown>)['HTMLCanvasElement'] = BadCanvas;
+    // @ts-expect-error mock window
+    globalThis.window = {};
+
+    await expect(parseImageInput(new BadCanvas())).rejects.toThrow(InvalidInputError);
+  });
+
+  it('rejects empty ArrayBuffer or empty Blob', async () => {
+    await expect(parseImageInput(new ArrayBuffer(0))).rejects.toThrow(InvalidInputError);
+    await expect(parseImageInput(new Blob([]))).rejects.toThrow(InvalidInputError);
+  });
+
+  it('passes through valid RawImageData with Uint8Array or Uint8ClampedArray', async () => {
+    const rawClamped = {
+      data: new Uint8ClampedArray(16),
+      width: 2,
+      height: 2
+    };
+    const res1 = await parseImageInput(rawClamped);
+    expect(res1.width).toBe(2);
+    expect(res1.height).toBe(2);
+
+    const rawUint = {
+      data: new Uint8Array(16),
+      width: 2,
+      height: 2
+    };
+    const res2 = await parseImageInput(rawUint);
+    expect(res2.width).toBe(2);
+    expect(res2.height).toBe(2);
+  });
+
   it('rejects invalid image source with 0 dimensions', async () => {
     // @ts-expect-error mock window
     globalThis.window = {};
@@ -125,5 +244,49 @@ describe('Image Input Parser (src/internal/image-input/index.ts)', () => {
 
     const emptyBitmap = new (globalThis as Record<string, unknown>)['ImageBitmap']();
     await expect(parseImageInput(emptyBitmap)).rejects.toThrow(InvalidInputError);
+  });
+
+  it('falls back to document.createElement("canvas") when OffscreenCanvas is undefined', async () => {
+    // @ts-expect-error mock window
+    globalThis.window = {};
+    delete (globalThis as Record<string, unknown>)['OffscreenCanvas'];
+
+    const mockCtx = {
+      drawImage: vi.fn(),
+      getImageData: () => ({
+        data: new Uint8ClampedArray(400),
+        width: 10,
+        height: 10
+      })
+    };
+
+    (globalThis as Record<string, unknown>)['document'] = {
+      createElement: vi.fn().mockReturnValue({
+        width: 10,
+        height: 10,
+        getContext: () => mockCtx
+      })
+    };
+
+    (globalThis as Record<string, unknown>)['ImageBitmap'] = class FakeBitmap {
+      width = 10;
+      height = 10;
+    };
+
+    const bitmap = new (globalThis as Record<string, unknown>)['ImageBitmap']();
+    const result = await parseImageInput(bitmap);
+    expect(result.width).toBe(10);
+    expect(result.height).toBe(10);
+  });
+
+  it('rejects unsupported types in Node environment', async () => {
+    // @ts-expect-error null window/doc
+    delete globalThis.window;
+    // @ts-expect-error null window/doc
+    delete globalThis.document;
+
+    await expect(parseImageInput(12345)).rejects.toThrow(InvalidInputError);
+    await expect(parseImageInput(true)).rejects.toThrow(InvalidInputError);
+    await expect(parseImageInput({ some: 'object' })).rejects.toThrow(InvalidInputError);
   });
 });
